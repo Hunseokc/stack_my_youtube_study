@@ -8,6 +8,30 @@ github.io 폼 ──(GitHub API)──▶ GitHub Actions ──▶ Gemini (영�
 
 노션·Gemini 키는 GitHub Secrets에만 있고, 웹 페이지에는 들어가지 않습니다.
 
+## 직접 써보고 싶다면 (Fork해서 본인 것으로)
+
+이 저장소는 코드만 공개돼 있고, **키와 토큰은 들어 있지 않습니다.** 그래서 이 저장소의 github.io 주소로는 아무도 분석을 돌릴 수 없고(제 저장소에 Actions를 실행할 권한이 없음), 제 Gemini·노션 계정도 쓸 수 없습니다. 쓰려면 아래처럼 본인 계정에 복사해서 본인 키로 설정하세요. 비용·사용량도 전부 본인 계정에서 나갑니다.
+
+1. 우측 상단 **Fork**로 본인 계정에 복사합니다. (공개 저장소 Actions는 무료, 비공개는 월 2000분)
+2. Fork한 저장소의 **Actions** 탭에서 *I understand my workflows, go ahead and enable them*을 눌러 워크플로를 켭니다. Fork는 기본이 꺼져 있습니다.
+3. 아래 **처음 설정**을 그대로 따라 합니다. 키는 전부 본인 것으로 새로 만듭니다.
+4. 노션에 아래 속성을 가진 데이터베이스를 직접 만듭니다. 이름이 다르면 [analyze.py](scripts/analyze.py)의 `create_page`도 맞춰야 합니다.
+
+   | 속성 | 유형 |
+   |---|---|
+   | 제목 | 제목 |
+   | URL | URL |
+   | 태그 | 다중 선택 |
+   | 채널 | 텍스트 |
+   | 요약 | 텍스트 |
+   | 키워드 | 다중 선택 |
+   | 난이도 | 선택 (입문/중급/고급, 없으면 자동 생성) |
+   | 메모 | 텍스트 |
+
+5. 워크플로의 `environment: GEMINI_API_KEY`는 제가 쓰는 환경 이름입니다. 본인 환경 이름으로 바꾸거나, 환경 없이 **Settings → Secrets and variables → Actions**의 Repository secrets에 등록하고 `environment:` 줄을 지워도 됩니다.
+
+> 웹 페이지의 GitHub 토큰은 방문자 본인의 브라우저에만 저장되고, 저장소 주소는 github.io 주소에서 자동으로 채워집니다. 그래서 Fork한 쪽에서 코드를 고칠 필요는 없습니다.
+
 ## 처음 설정 (한 번만)
 
 ### 1. 노션 Integration
@@ -25,7 +49,7 @@ https://aistudio.google.com/apikey 에서 발급합니다.
    |---|---|
    | `GEMINI_API_KEY` | Gemini 키 |
    | `NOTION_TOKEN` | 노션 통합 시크릿 |
-   | `NOTION_DATABASE_ID` | `d708a561eb574175a8bb979642b3a76a` |
+   | `NOTION_DATABASE_ID` | 본인 데이터베이스 ID (주소의 `notion.so/` 뒤 32자리) |
 
 3. (선택) 같은 환경의 **Variables**에 `GEMINI_MODEL`을 넣으면 모델을 바꿀 수 있습니다. 기본값은 `gemini-flash-latest`이고, 더 꼼꼼한 분석을 원하면 `gemini-pro-latest`를 넣으세요.
 4. **Settings → Pages**에서 Source를 `Deploy from a branch`, 브랜치 `main` / `/(root)`로 저장합니다.
