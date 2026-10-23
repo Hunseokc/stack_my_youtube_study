@@ -13,6 +13,7 @@ import requests
 from google import genai
 from google.genai import errors, types
 
+import guitar
 import keyboard
 import schemas
 
@@ -155,7 +156,11 @@ def terms(items):
 
 
 def voicing_cell(c):
-    if c["split"]:
+    frets = guitar.parse_frets(c["frets"])
+    if frets:
+        degs = guitar.degrees(c["symbol"], frets)
+        notes = " ".join(c["frets"]) + "  ·  " + " ".join(d for d in degs if d)
+    elif c["split"]:
         notes = f"LH {' '.join(c['lh'])} · RH {' '.join(c['rh'])}"
     else:
         notes = " ".join(c["lh"] + c["rh"])
@@ -176,7 +181,8 @@ def render_harmony(d, url):
             [[c["symbol"], c["roman"], c["function"], voicing_cell(c), c["nuance"], c["source"],
               ts_link(url, c["timestamp"])] for c in p["chords"]],
         ))
-        svg = keyboard.progression_svg(p["chords"])
+        drawer = guitar if p["instrument"] == "기타" else keyboard
+        svg = drawer.progression_svg(p["chords"])
         if svg:
             image = upload_image(svg, "voicing.svg")
             if image:

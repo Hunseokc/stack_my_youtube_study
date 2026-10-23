@@ -42,6 +42,7 @@ SECTIONS = {
             "progressions": _arr(_obj({
                 "name": {"type": "string", "description": "진행 이름이나 맥락 (예: 인트로 진행, 2-5-1 변형)"},
                 "key": S,
+                "instrument": {"type": "string", "enum": ["건반", "기타"], "description": "이 진행을 연주·설명하는 악기"},
                 "chords": _arr(_obj({
                     "symbol": {"type": "string", "description": "코드 심볼 (예: Cmaj7, G7(b9)/B)"},
                     "roman": {"type": "string", "description": "로마숫자 표기 (예: Imaj7, V7/ii)"},
@@ -49,6 +50,7 @@ SECTIONS = {
                     "split": {"type": "boolean", "description": "강사가 왼손/오른손을 구분해 보여줬으면 true"},
                     "lh": _arr(NOTE) | {"description": "왼손 노트. split이 false면 빈 배열"},
                     "rh": _arr(NOTE) | {"description": "오른손 노트. split이 false면 누른 노트 전부"},
+                    "frets": _arr(S) | {"description": "기타일 때만. 6번줄(저음 E)부터 1번줄까지 6개: 안 치는 줄 x, 개방현 0, 나머지 프렛 번호. 건반이면 빈 배열"},
                     "voicing_note": {"type": "string", "description": "보이싱 특징 개조식 한 줄 (예: 3도 대신 4도/11도 음 사용)"},
                     "nuance": {"type": "string", "description": "이 코드의 색채·역할·긴장감에 대한 설명"},
                     "source": SOURCE,
@@ -60,7 +62,9 @@ SECTIONS = {
         "코드 진행은 코드 단위로 빠짐없이 적으세요. 보이싱은 실제로 누른 건반을 전부 옥타브와 함께, 낮은 음부터 적습니다. "
         "6개를 눌렀으면 6개 모두 적고, 같은 음이 다른 옥타브에 있으면 중복해서 넣습니다. "
         "화면의 피아노롤·건반·악보를 우선 근거로 쓰고, 음 철자(Gb/F#)는 영상 표기를 따릅니다. "
-        "강사가 왼손/오른손을 나눠 보여주면 split=true로 lh/rh에 나누고, 아니면 split=false로 전부 rh에 넣습니다.",
+        "강사가 왼손/오른손을 나눠 보여주면 split=true로 lh/rh에 나누고, 아니면 split=false로 전부 rh에 넣습니다. "
+        "기타 영상이면 instrument=기타로 하고, 코드 폼을 frets에 6번줄부터 적습니다(lh/rh는 비워 둠). "
+        "화면의 코드 다이어그램·TAB·지판을 우선 근거로 씁니다.",
     ),
     "사운드 디자인": (
         "sound_design",
