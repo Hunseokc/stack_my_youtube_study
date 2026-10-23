@@ -21,11 +21,15 @@ def _obj(props, required=None):
 S = {"type": "string"}
 
 COMMON = {
-    "summary": _arr(S) | {"description": "영상 핵심 요약 3줄"},
+    "summary": _obj({
+        "headline": {"type": "string", "description": "영상 전체 핵심 한 줄. 개조식"},
+        "points": _arr(_obj({
+            "point": {"type": "string", "description": "핵심 요점 하나. 개조식 명사구"},
+            "details": _arr(S) | {"description": "요점의 이유·효과 0~2개. 개조식 짧은 구"},
+        })) | {"description": "요점 2~4개"},
+    }),
     "key_concepts": _arr(S) | {"description": "분류용 핵심 개념 키워드 3~8개, 짧은 명사형 (예: 세컨더리 도미넌트, 사이드체인)"},
     "difficulty": {"type": "string", "enum": ["입문", "중급", "고급"]},
-    "key": {"type": "string", "description": "곡/예제의 조성 (예: C major, A minor). 해당 없으면 빈 문자열"},
-    "bpm": {"type": "integer", "description": "예제 템포. 모르면 0"},
     "moments": _arr(_obj({"timestamp": TIMESTAMP, "point": S})) | {"description": "다시 볼 만한 주요 구간"},
     "practice": _arr(S) | {"description": "영상 내용으로 해볼 연습 과제 2~4개"},
 }
@@ -144,6 +148,8 @@ PROMPT = """당신은 음악 이론·작곡·프로듀싱 강의를 정리하는
 
 규칙:
 - 모든 설명은 한국어로 쓰고, 코드 심볼·플러그인 이름 같은 고유 표기는 원문 그대로 둡니다.
+- 모든 설명은 개조식으로 짧게 씁니다. "~합니다/~입니다" 문장이나 접속사로 이어 붙이지 말고 명사구로 끝냅니다.
+  예) "부드러운 연결감과 자연스러운 하행 뉘앙스", "도미넌트 긴장감 유지한 채 색다른 종지"
 - 영상의 말, 화면(자막, 피아노롤, 악보, 건반, 플러그인 화면)을 모두 근거로 씁니다.
 - source 필드가 있는 항목은 근거를 정직하게 표시합니다. 소리만 듣고 짐작한 것은 반드시 "추정"입니다.
 - 영상에 없는 내용을 지어내지 마세요. 해당 내용이 없으면 빈 배열이나 빈 문자열로 둡니다.

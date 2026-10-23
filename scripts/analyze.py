@@ -244,11 +244,24 @@ RENDERERS = {
 }
 
 
+def summary_block(summary):
+    points = []
+    for p in summary["points"]:
+        item = bullet(p["point"])
+        if p["details"]:
+            item["bulleted_list_item"]["children"] = [bullet(d) for d in p["details"]]
+        points.append(item)
+    return {"object": "block", "type": "callout", "callout": {
+        "rich_text": text(summary["headline"], bold=True),
+        "icon": {"type": "emoji", "emoji": "📝"},
+        "children": points,
+    }}
+
+
 def build_blocks(url, tags, data):
     blocks = [
         {"object": "block", "type": "video", "video": {"type": "external", "external": {"url": url}}},
-        {"object": "block", "type": "callout", "callout": {
-            "rich_text": text("\n".join(data["summary"])), "icon": {"type": "emoji", "emoji": "📝"}}},
+        summary_block(data["summary"]),
     ]
     for tag in tags:
         field = schemas.SECTIONS[tag][0]
@@ -287,10 +300,8 @@ def create_page(url, tags, memo, title, channel, data):
         "URL": {"url": url},
         "태그": {"multi_select": [{"name": t} for t in tags]},
         "채널": {"rich_text": text(channel)},
-        "요약": {"rich_text": text(" ".join(data["summary"]))},
+        "요약": {"rich_text": text(data["summary"]["headline"])},
         "키워드": {"multi_select": [{"name": k} for k in dict.fromkeys(keywords)]},
-        "키": {"rich_text": text(data["key"])},
-        "BPM": {"number": data["bpm"] or None},
         "난이도": {"select": {"name": data["difficulty"]}},
         "메모": {"rich_text": text(memo)},
     }
