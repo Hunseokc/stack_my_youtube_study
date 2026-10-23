@@ -54,15 +54,24 @@ def analyze(url, tags, memo):
     response = client.models.generate_content(
         model=env("GEMINI_MODEL", "gemini-flash-latest"),
         contents=types.Content(parts=[
-            types.Part(file_data=types.FileData(file_uri=url)),
+            # 영상 토큰은 대부분 오디오(초당 32)라, 프레임은 5초에 한 장만 본다
+            types.Part(
+                file_data=types.FileData(file_uri=url),
+                video_metadata=types.VideoMetadata(fps=float(env("FRAME_FPS", "0.2"))),
+            ),
             types.Part(text=prompt),
         ]),
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_json_schema=schema,
+            media_resolution=types.MediaResolution.MEDIA_RESOLUTION_LOW,
+            thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
         ),
     )
-    return json.loads(response.text)
+    u = response.usage_metadata
+    usage = f"입력 {u.prompt_token_count:,} · 출력 {u.candidates_token_count or 0:,} · 생각 {u.thoughts_token_count or 0:,} 토큰"
+    print(f"토큰 사용량: {usage}")
+    return json.loads(response.text), usage
 
 
 # ---------- 노션 블록 ----------
@@ -291,14 +300,14 @@ def main():
 
     title, channel = fetch_meta(url)
     print(f"분석 시작: {title or url} [{', '.join(tags)}]")
-    data = analyze(url, tags, memo)
+    data, usage = analyze(url, tags, memo)
     page_url = create_page(url, tags, memo, title, channel, data)
     print(f"노션 페이지 생성: {page_url}")
 
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as f:
-            f.write(f"### [{title or url}]({page_url})\n\n태그: {', '.join(tags)}\n")
+            f.write(f"### [{title or url}]({page_url})\n\n태그: {', '.join(tags)}\n\n토큰: {usage}\n")
 
 
 if __name__ == "__main__":
