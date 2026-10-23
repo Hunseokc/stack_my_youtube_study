@@ -1,0 +1,43 @@
+name: analyze
+run-name: "${{ inputs.tags }} | ${{ inputs.url }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 유튜브 영상 주소
+        required: true
+        type: string
+      tags:
+        description: 쉼표로 구분한 태그 (화성, 사운드 디자인, DAW/MIDI, 리듬, 편곡, 믹싱)
+        required: true
+        type: string
+      memo:
+        description: 특히 볼 부분 (선택)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    environment: GEMINI_API_KEY  # Secrets가 등록된 Environment 이름
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python scripts/analyze.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          INPUT_URL: ${{ inputs.url }}
+          INPUT_TAGS: ${{ inputs.tags }}
+          INPUT_MEMO: ${{ inputs.memo }}

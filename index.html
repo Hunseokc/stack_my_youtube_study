@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학습 영상 노트</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --card: #ffffff; --text: #1f1f1d; --muted: #6b6a66; --line: #e4e2dc;
+    --accent: #3b5bdb; --accent-text: #ffffff; --ok: #2f9e44; --fail: #e03131; --run: #f08c00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #191918; --card: #232322; --text: #ecebe8; --muted: #9a9893; --line: #34332f;
+      --accent: #7b93f5; --accent-text: #111; --ok: #51cf66; --fail: #ff6b6b; --run: #ffa94d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 15px; margin: 32px 0 12px; color: var(--muted); font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 6px; }
+  .field + .field { margin-top: 18px; }
+  input, textarea {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); font: inherit;
+  }
+  textarea { resize: vertical; min-height: 64px; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    padding: 7px 14px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .tag[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.primary {
+    width: 100%; margin-top: 22px; padding: 12px; border: 0; border-radius: 8px;
+    background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  .link-btn { background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 4px; }
+  .link-btn:hover { color: var(--text); }
+  .preview { display: none; gap: 12px; align-items: center; margin-top: 10px; }
+  .preview.show { display: flex; }
+  .preview img { width: 120px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; }
+  .msg { margin-top: 12px; font-size: 13px; min-height: 1em; }
+  .msg.err { color: var(--fail); }
+  .runs { list-style: none; margin: 0; padding: 0; }
+  .run {
+    display: grid; grid-template-columns: 96px 1fr auto; gap: 12px; align-items: center;
+    padding: 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--line);
+  }
+  .run + .run { margin-top: 8px; }
+  .run img { width: 96px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; background: var(--line); }
+  .run .meta { min-width: 0; }
+  .run .t { font-size: 14px; font-weight: 600; }
+  .run .sub { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 12px; font-weight: 600; white-space: nowrap; text-decoration: none; }
+  .badge.ok { color: var(--ok); } .badge.fail { color: var(--fail); } .badge.run { color: var(--run); }
+  .empty { color: var(--muted); font-size: 13px; }
+  dialog {
+    width: min(520px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); color: var(--text); padding: 20px;
+  }
+  dialog::backdrop { background: rgb(0 0 0 / .4); }
+  dialog h3 { margin: 0 0 16px; font-size: 17px; }
+  dialog ol { padding-left: 18px; font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  dialog a { color: var(--accent); }
+  .row { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+  .row button { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+  .row button.save { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>학습 영상 노트</h1>
+    <div>
+      <a id="notionLink" class="link-btn" target="_blank" rel="noopener" hidden>노션 열기</a>
+      <button class="link-btn" id="openSettings" type="button">설정</button>
+    </div>
+  </header>
+
+  <form class="card" id="form">
+    <div class="field">
+      <label for="url">유튜브 링크</label>
+      <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" required>
+      <div class="preview" id="preview"><img alt=""><span class="hint">영상을 확인했어요</span></div>
+    </div>
+    <div class="field">
+      <label>태그</label>
+      <div class="tags" id="tags"></div>
+      <div class="hint">고른 태그에 맞춰 정리 항목이 달라져요. 여러 개 골라도 됩니다.</div>
+    </div>
+    <div class="field">
+      <label for="memo">메모 <span style="font-weight:400;color:var(--muted)">(선택)</span></label>
+      <textarea id="memo" placeholder="예: 3:20부터 나오는 보이싱 위주로"></textarea>
+    </div>
+    <button class="primary" id="submit" type="submit">분석 요청</button>
+    <div class="msg" id="msg" role="status"></div>
+  </form>
+
+  <h2>최근 요청</h2>
+  <ul class="runs" id="runs"><li class="empty">설정에서 GitHub 토큰을 넣으면 기록이 보여요.</li></ul>
+</main>
+
+<dialog id="settings">
+  <form method="dialog" id="settingsForm">
+    <h3>설정</h3>
+    <ol>
+      <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained 토큰 발급</a>에서 이 저장소만 선택</li>
+      <li>Repository permissions → <b>Actions: Read and write</b></li>
+      <li>토큰은 이 브라우저에만 저장되고 어디에도 올라가지 않아요.</li>
+    </ol>
+    <div class="field">
+      <label for="token">GitHub 토큰</label>
+      <input id="token" type="password" placeholder="github_pat_..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="repo">저장소</label>
+      <input id="repo" placeholder="owner/repo">
+      <div class="hint">github.io 주소에서 자동으로 채워요.</div>
+    </div>
+    <div class="field">
+      <label for="notion">노션 데이터베이스 링크 <span style="font-weight:400;color:var(--muted)">(선택)</span></label>
+      <input id="notion" type="url" placeholder="https://app.notion.com/p/...">
+    </div>
+    <div class="row">
+      <button value="cancel" formnovalidate>닫기</button>
+      <button value="save" class="save">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const TAGS = ["화성", "사운드 디자인", "DAW/MIDI", "리듬", "편곡", "믹싱"];
+const WORKFLOW = "analyze.yml";
+const $ = (id) => document.getElementById(id);
+
+const store = {
+  get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+function inferRepo() {
+  const { hostname, pathname } = location;
+  if (!hostname.endsWith(".github.io")) return "";
+  const owner = hostname.split(".")[0];
+  return `${owner}/${pathname.split("/")[1] || hostname}`;
+}
+
+const cfg = {
+  get token() { return store.get("token"); },
+  get repo() { return store.get("repo") || inferRepo(); },
+  get notion() { return store.get("notion"); },
+};
+
+function videoId(url) {
+  const m = url.match(/(?:v=|youtu\.be\/|shorts\/|live\/|embed\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+const thumb = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function gh(path, opts = {}) {
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}${path}`, {
+    ...opts,
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${cfg.token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(opts.body ? { "Content-Type": "application/json" } : {}),
+    },
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    const hint = { 401: "토큰이 잘못됐거나 만료됐어요.", 403: "토큰에 Actions 쓰기 권한이 없어요.", 404: "저장소나 워크플로를 찾지 못했어요." }[res.status] || "";
+    throw new Error(`${hint} (${res.status} ${detail.message || res.statusText})`.trim());
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+// ---------- 폼 ----------
+const selected = new Set();
+for (const t of TAGS) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "tag"; b.textContent = t; b.setAttribute("aria-pressed", "false");
+  b.onclick = () => {
+    selected.has(t) ? selected.delete(t) : selected.add(t);
+    b.setAttribute("aria-pressed", selected.has(t));
+  };
+  $("tags").append(b);
+}
+
+$("url").addEventListener("input", () => {
+  const id = videoId($("url").value);
+  $("preview").classList.toggle("show", !!id);
+  if (id) $("preview").querySelector("img").src = thumb(id);
+});
+
+function say(text, err = false) { $("msg").textContent = text; $("msg").className = "msg" + (err ? " err" : ""); }
+
+let branch = "";
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = videoId($("url").value);
+  if (!id) return say("유튜브 영상 링크가 아니에요.", true);
+  if (!selected.size) return say("태그를 하나 이상 골라주세요.", true);
+  if (!cfg.token || !cfg.repo) { $("settings").showModal(); return say("먼저 설정을 채워주세요.", true); }
+
+  $("submit").disabled = true; say("요청 보내는 중...");
+  try {
+    branch ||= (await gh("")).default_branch;
+    await gh(`/actions/workflows/${WORKFLOW}/dispatches`, {
+      method: "POST",
+      body: JSON.stringify({
+        ref: branch,
+        inputs: {
+          url: `https://www.youtube.com/watch?v=${id}`,
+          tags: TAGS.filter((t) => selected.has(t)).join(","),
+          memo: $("memo").value.trim(),
+        },
+      }),
+    });
+    say("요청했어요. 보통 1~3분 뒤에 노션에 정리돼요.");
+    $("url").value = ""; $("memo").value = ""; $("preview").classList.remove("show");
+    watchUntil = Date.now() + 20000;
+    refresh();
+  } catch (err) {
+    say(err.message, true);
+  } finally {
+    $("submit").disabled = false;
+  }
+});
+
+// ---------- 최근 요청 ----------
+let timer = null, watchUntil = 0;
+
+function ago(iso) {
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 60) return "방금";
+  if (s < 3600) return `${Math.floor(s / 60)}분 전`;
+  if (s < 86400) return `${Math.floor(s / 3600)}시간 전`;
+  return new Date(iso).toLocaleDateString("ko-KR");
+}
+
+function badge(run) {
+  if (run.status !== "completed") return ["run", "분석 중"];
+  if (run.conclusion === "success") return ["ok", "완료"];
+  if (run.conclusion === "cancelled") return ["fail", "취소됨"];
+  return ["fail", "실패 · 로그 보기"];
+}
+
+async function refresh() {
+  clearTimeout(timer);
+  if (!cfg.token || !cfg.repo) return;
+  try {
+    const { workflow_runs: runs } = await gh(`/actions/workflows/${WORKFLOW}/runs?per_page=15`);
+    $("runs").innerHTML = runs.length ? runs.map((r) => {
+      const [tags, url = ""] = r.display_title.split(" | ");
+      const id = videoId(url);
+      const [cls, label] = badge(r);
+      return `<li class="run">
+        ${id ? `<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${thumb(id)}" alt=""></a>` : "<span></span>"}
+        <div class="meta"><div class="t">${esc(tags)}</div><div class="sub">${ago(r.created_at)} · ${esc(url)}</div></div>
+        <a class="badge ${cls}" href="${esc(r.html_url)}" target="_blank" rel="noopener">${label}</a>
+      </li>`;
+    }).join("") : `<li class="empty">아직 요청이 없어요.</li>`;
+    const active = runs.some((r) => r.status !== "completed");
+    if (active || Date.now() < watchUntil) timer = setTimeout(refresh, 5000);
+  } catch (err) {
+    $("runs").innerHTML = `<li class="empty">${esc(err.message)}</li>`;
+  }
+}
+
+// ---------- 설정 ----------
+function syncNotionLink() {
+  $("notionLink").hidden = !cfg.notion;
+  $("notionLink").href = cfg.notion || "#";
+}
+
+$("openSettings").onclick = () => {
+  $("token").value = cfg.token; $("repo").value = cfg.repo; $("notion").value = cfg.notion;
+  $("settings").showModal();
+};
+$("settings").addEventListener("close", () => {
+  if ($("settings").returnValue !== "save") return;
+  store.set("token", $("token").value.trim());
+  store.set("repo", $("repo").value.trim());
+  store.set("notion", $("notion").value.trim());
+  syncNotionLink();
+  say("");
+  refresh();
+});
+
+syncNotionLink();
+if (!cfg.token) $("openSettings").click();
+refresh();
+</script>
+</body>
+</html>
