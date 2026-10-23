@@ -7,16 +7,18 @@ import json
 import os
 import re
 import sys
+import time
 
 import requests
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 import schemas
 
 NOTION_VERSION = "2022-06-28"
 TEXT_LIMIT = 2000  # 노션 rich_text 한 덩어리 최대 길이
 BLOCK_BATCH = 100  # 노션 요청 한 번에 넣을 수 있는 블록 수
+GEMINI_ATTEMPTS = 4
 
 
 def env(name, default=None):
@@ -51,6 +53,19 @@ def analyze(url, tags, memo):
         memo=f"\n사용자 메모(특히 신경 써서 볼 부분): {memo}" if memo else "",
     )
     client = genai.Client(api_key=env("GEMINI_API_KEY"))
+    for attempt in range(1, GEMINI_ATTEMPTS + 1):
+        try:
+            return _generate(client, url, prompt, schema)
+        except (errors.ServerError, errors.ClientError) as e:
+            # 503(과부하)·429(분당 한도)는 잠시 뒤 다시 하면 대부분 통과한다
+            if e.code not in (429, 500, 503) or attempt == GEMINI_ATTEMPTS:
+                raise
+            wait = 30 * attempt
+            print(f"Gemini {e.code} 응답, {wait}초 뒤 다시 시도 ({attempt}/{GEMINI_ATTEMPTS})")
+            time.sleep(wait)
+
+
+def _generate(client, url, prompt, schema):
     response = client.models.generate_content(
         model=env("GEMINI_MODEL", "gemini-flash-latest"),
         contents=types.Content(parts=[
