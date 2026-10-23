@@ -13,6 +13,7 @@ import requests
 from google import genai
 from google.genai import errors, types
 
+import keyboard
 import schemas
 
 NOTION_VERSION = "2022-06-28"
@@ -101,13 +102,13 @@ def seconds(ts):
     return total
 
 
-def text(content, link=None, bold=False, code=False):
+def text(content, link=None, bold=False, code=False, color="default"):
     content = str(content or "")
     chunks = [content[i:i + TEXT_LIMIT] for i in range(0, len(content), TEXT_LIMIT)]
     return [{
         "type": "text",
         "text": {"content": c, "link": {"url": link} if link else None},
-        "annotations": {"bold": bold, "code": code},
+        "annotations": {"bold": bold, "code": code, "color": color},
     } for c in chunks]
 
 
@@ -153,6 +154,17 @@ def terms(items):
     return [bullet(text(f"{i['term']}: ", bold=True) + text(i["explanation"])) for i in items]
 
 
+def voicing_cell(c):
+    if c["split"]:
+        notes = f"LH {' '.join(c['lh'])} · RH {' '.join(c['rh'])}"
+    else:
+        notes = " ".join(c["lh"] + c["rh"])
+    cell = text(notes, code=True)
+    if c["voicing_note"]:
+        cell += text(f"\n({c['voicing_note']})", color="gray")
+    return cell
+
+
 def render_harmony(d, url):
     out = []
     for p in d["progressions"]:
@@ -161,9 +173,14 @@ def render_harmony(d, url):
         out.append(para(text(" → ".join(c["symbol"] for c in p["chords"]), code=True)))
         out.append(table(
             ["코드", "로마숫자", "기능", "보이싱", "뉘앙스", "근거", "시간"],
-            [[c["symbol"], c["roman"], c["function"], c["voicing"], c["nuance"], c["source"],
+            [[c["symbol"], c["roman"], c["function"], voicing_cell(c), c["nuance"], c["source"],
               ts_link(url, c["timestamp"])] for c in p["chords"]],
         ))
+        svg = keyboard.progression_svg(p["chords"])
+        if svg:
+            image = upload_image(svg, "voicing.svg")
+            if image:
+                out.append(image)
     if d["concepts"]:
         out.append(heading("개념 정리", 3))
         out += terms(d["concepts"])
@@ -280,17 +297,35 @@ def build_blocks(url, tags, data):
 
 # ---------- 노션 API ----------
 
+def notion_headers():
+    return {"Authorization": f"Bearer {env('NOTION_TOKEN')}", "Notion-Version": NOTION_VERSION}
+
+
 def notion(method, path, body):
-    r = requests.request(
-        method, f"https://api.notion.com/v1/{path}", json=body, timeout=30,
-        headers={
-            "Authorization": f"Bearer {env('NOTION_TOKEN')}",
-            "Notion-Version": NOTION_VERSION,
-        },
-    )
+    r = requests.request(method, f"https://api.notion.com/v1/{path}", json=body, timeout=30,
+                         headers=notion_headers())
     if not r.ok:
         sys.exit(f"노션 API 오류 {r.status_code}: {r.text}")
     return r.json()
+
+
+def upload_image(svg, filename):
+    """SVG를 노션에 올려 이미지 블록으로 돌려준다. 실패해도 노트 작성은 계속한다."""
+    try:
+        r = requests.post("https://api.notion.com/v1/file_uploads", timeout=30, headers=notion_headers(),
+                          json={"filename": filename, "content_type": "image/svg+xml"})
+        r.raise_for_status()
+        upload_id = r.json()["id"]
+        r = requests.post(f"https://api.notion.com/v1/file_uploads/{upload_id}/send", timeout=30,
+                          headers=notion_headers(),
+                          files={"file": (filename, svg.encode("utf-8"), "image/svg+xml")})
+        r.raise_for_status()
+    except requests.RequestException as e:
+        detail = e.response.text if e.response is not None else e
+        print(f"건반 그림 업로드 실패, 그림 없이 진행: {detail}")
+        return None
+    return {"object": "block", "type": "image",
+            "image": {"type": "file_upload", "file_upload": {"id": upload_id}}}
 
 
 def create_page(url, tags, memo, title, channel, data):

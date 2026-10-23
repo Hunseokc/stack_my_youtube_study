@@ -8,6 +8,7 @@ SOURCE = {
     "description": "근거: 강사가 직접 말함 / 화면(자막·피아노롤·악보·건반)에 보임 / 소리만 듣고 추정",
 }
 TIMESTAMP = {"type": "string", "description": "영상 내 위치, mm:ss 또는 h:mm:ss. 모르면 빈 문자열"}
+NOTE = {"type": "string", "description": "옥타브 포함 음이름, 가운데 도 = C4 (예: Gb4, F#3)"}
 
 
 def _arr(items):
@@ -45,7 +46,10 @@ SECTIONS = {
                     "symbol": {"type": "string", "description": "코드 심볼 (예: Cmaj7, G7(b9)/B)"},
                     "roman": {"type": "string", "description": "로마숫자 표기 (예: Imaj7, V7/ii)"},
                     "function": {"type": "string", "description": "화성 기능 (T, SD, D, 차용 등)"},
-                    "voicing": {"type": "string", "description": "구성음과 보이싱 (예: LH C-G / RH E-B-D, 3·7음 셸, 드롭2)"},
+                    "split": {"type": "boolean", "description": "강사가 왼손/오른손을 구분해 보여줬으면 true"},
+                    "lh": _arr(NOTE) | {"description": "왼손 노트. split이 false면 빈 배열"},
+                    "rh": _arr(NOTE) | {"description": "오른손 노트. split이 false면 누른 노트 전부"},
+                    "voicing_note": {"type": "string", "description": "보이싱 특징 개조식 한 줄 (예: 3도 대신 4도/11도 음 사용)"},
                     "nuance": {"type": "string", "description": "이 코드의 색채·역할·긴장감에 대한 설명"},
                     "source": SOURCE,
                     "timestamp": TIMESTAMP,
@@ -53,7 +57,10 @@ SECTIONS = {
             })),
             "concepts": _arr(_obj({"term": S, "explanation": S})),
         }),
-        "코드 진행은 코드 단위로 빠짐없이 적고, 각 코드의 보이싱(구성음, 텐션, 전위, 손 배치)과 뉘앙스를 설명하세요.",
+        "코드 진행은 코드 단위로 빠짐없이 적으세요. 보이싱은 실제로 누른 건반을 전부 옥타브와 함께, 낮은 음부터 적습니다. "
+        "6개를 눌렀으면 6개 모두 적고, 같은 음이 다른 옥타브에 있으면 중복해서 넣습니다. "
+        "화면의 피아노롤·건반·악보를 우선 근거로 쓰고, 음 철자(Gb/F#)는 영상 표기를 따릅니다. "
+        "강사가 왼손/오른손을 나눠 보여주면 split=true로 lh/rh에 나누고, 아니면 split=false로 전부 rh에 넣습니다.",
     ),
     "사운드 디자인": (
         "sound_design",
